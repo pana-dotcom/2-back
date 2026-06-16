@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>2-back Game</title>
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    margin-top: 50px;
+}
+#letter {
+    font-size: 80px;
+    margin: 30px;
+}
+button {
+    font-size: 20px;
+    padding: 10px 20px;
+    margin: 10px;
+}
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="page1">
+    <h2>ようこそ</h2>
+    <p>これは「2-back」トレーニングです。</p>
+    <button onclick="nextPage(2)">次へ</button>
+</div>
+
+<div id="page2" class="hidden">
+    <h2>ルール説明①</h2>
+    <p>画面にアルファベットが順番に表示されます。</p>
+    <button onclick="nextPage(1)">戻る</button>
+    <button onclick="nextPage(3)">次へ</button>
+</div>
+
+<div id="page3" class="hidden">
+    <h2>ルール説明②</h2>
+    <p>2つ前と同じなら「一致！」を押します。</p>
+    <button onclick="nextPage(2)">戻る</button>
+    <button onclick="nextPage(4)">次へ</button>
+</div>
+
+<div id="page4" class="hidden">
+    <h2>準備OK？</h2>
+    <button onclick="nextPage(3)">戻る</button>
+    <button onclick="startGame()">スタート</button>
+</div>
+
+<!-- ゲーム -->
+<div id="game" class="hidden">
+    <h1>2-back</h1>
+    <div id="timer">残り：60秒</div>
+    <div id="letter">-</div>
+    <button onclick="checkMatch()">一致！</button>
+    <p id="result"></p>
+</div>
+
+<script>
+let sequence = [];
+let index = 0;
+let score = 0;
+let total = 0;
+let logs = [];
+
+let letters = "ABCDEF";
+
+let timeLimit = 60;
+let timeLeft = 60;
+let gameTimer;
+let letterTimer;
+
+function nextPage(num) {
+    let pages = ["page1","page2","page3","page4","game"];
+    pages.forEach(id => {
+        let el = document.getElementById(id);
+        if (el) el.classList.add("hidden");
+    });
+    document.getElementById("page" + num).classList.remove("hidden");
+}
+
+function startGame() {
+    document.getElementById("page4").classList.add("hidden");
+    document.getElementById("game").classList.remove("hidden");
+
+    sequence = [];
+    index = 0;
+    score = 0;
+    total = 0;
+    logs = [];
+
+    timeLeft = timeLimit;
+    updateTimer();
+
+    gameTimer = setInterval(countDown, 1000);
+    nextLetter();
+}
+
+function countDown() {
+    timeLeft--;
+    updateTimer();
+
+    if (timeLeft <= 0) {
+        endGame();
+    }
+}
+
+function updateTimer() {
+    document.getElementById("timer").innerText = "残り：" + timeLeft + "秒";
+}
+
+
+//同じ文字の連続出現なし
+function nextLetter() {
+    let rand;
+    do {
+    rand = letters[Math.floor(Math.random() * letters.length)];
+    } while (
+        sequence.length > 0 &&
+        rand === sequence[sequence.length - 1]
+    );
+
+    sequence.push(rand);
+    document.getElementById("letter").innerText = rand;
+    index++;
+
+    letterTimer = setTimeout(nextLetter, 2000);
+}
+
+function checkMatch() {
+    if (index < 3) return;
+
+    total++;
+
+    let correct = sequence[index - 1] === sequence[index - 3];
+
+    logs.push([index, sequence[index-3], sequence[index-1], correct]);
+}
+
+function endGame() {
+    clearInterval(gameTimer);
+    clearTimeout(letterTimer);
+
+    document.getElementById("letter").innerText = "終了";
+
+    exportCSV();
+}
+
+function exportCSV() {
+    let csv = "試行回数,2つ前,現在,正誤\n";
+
+    logs.forEach(row => {
+        csv += row.join(",") + "\n";
+    });
+
+    // 集計
+    let miss = total - score;
+    let rate = total > 0 ? ((score / total) * 100).toFixed(1) : 0;
+
+    csv += "\n---結果---\n";
+    csv += `Correct responses (n),${score}\n`;
+    csv += `miss (n),${miss}\n`;
+    csv += `Accuracy (%),${rate}%\n`;
+
+    let blob = new Blob([csv], { type: "text/csv" });
+    let link = document.createElement("a");
+
+    let now = new Date();
+    let YYYY = now.getFullYear();
+    let MM = String(now.getMonth() + 1).padStart(2,"0");
+    let DD = String(now.getDate()).padStart(2,"0");
+    let hh = String(now.getHours()).padStart(2,"0");
+    let mm = String(now.getMinutes()).padStart(2,"0");
+
+    let filename = `n-back_${YYYY}${MM}${DD}_${hh}${mm}.csv`;
+
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
+</script>
+
+</body>
+</html>
